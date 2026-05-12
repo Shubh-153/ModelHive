@@ -1,0 +1,10 @@
+venv/
+__pycache__/
+agents/__pycache__/
+output/
+app.py
+App.jsx
+*.pyc
+.env
+
+frontend/
