@@ -7,6 +7,7 @@ class ProjectState:
         self.review_feedback = ""
         self.iteration = 1
         self.status = "in_progress"  # or "approved"
+        self.failed_components = {"BACKEND", "FRONTEND"}  # on first iteration, build both
 
     def to_dict(self):
         return self.__dict__

@@ -1,32 +1,45 @@
-import requests
+import httpx
 from config import OLLAMA_MODEL, OLLAMA_URL
 
-def run_qwen(prompt: str) -> str:
-    response = requests.post(OLLAMA_URL, json={
-        "model": OLLAMA_MODEL,
-        "prompt": prompt,
-        "stream": False
-    })
-    
-    data = response.json()
-    
-    # Debug: print what Ollama actually returned
-    # print("[DEBUG] Ollama raw response:", data) ## was making it long
-    
+
+async def run_qwen(prompt: str) -> str:
+    async with httpx.AsyncClient(timeout=60.0) as client:
+        resp = await client.post(OLLAMA_URL, json={
+            "model": OLLAMA_MODEL,
+            "prompt": prompt,
+            "stream": False,
+        })
+
+    try:
+        data = resp.json()
+    except Exception as e:
+        raise Exception(f"Invalid JSON response from Ollama: {e}")
+
     # Handle both possible keys
     if "response" in data:
         return data["response"]
     elif "message" in data:
-        return data["message"]["content"]
+        return data["message"].get("content", "")
     elif "error" in data:
         raise Exception(f"Ollama error: {data['error']}")
     else:
         raise Exception(f"Unexpected Ollama response: {data}")
 
-def decompose_task(user_prompt: str) -> str:
+
+async def decompose_task(user_prompt: str) -> str:
     prompt = f"""
 You are a task decomposer for a web app coding system.
 User request: "{user_prompt}"
+
+MANDATORY ARCHITECTURAL REQUIREMENTS:
+1. Backend MUST provide these routes:
+   - GET /tasks (list all)
+   - POST /tasks (create new)
+   - PUT /tasks/<id>/completed (toggle status)
+   - DELETE /tasks/<id> (remove task)
+2. Data models MUST include: id, title, description, completed (boolean), createdAt (ISO string), updatedAt (ISO string).
+3. Backend MUST enable CORS.
+4. Frontend MUST use separate components (e.g. TaskList, TaskItem, TaskForm).
 
 Return a structured spec with:
 1. App purpose
@@ -36,9 +49,10 @@ Return a structured spec with:
 
 Be concise. No code. Just the spec.
 """
-    return run_qwen(prompt)
+    return await run_qwen(prompt)
 
-def summarize_output(state_dict: dict) -> str:
+
+async def summarize_output(state_dict: dict) -> str:
     prompt = f"""
 A multi-agent system just built a web app.
 Here is what was built:
@@ -52,4 +66,4 @@ It passed code review after {state_dict['iteration']} iteration(s).
 Write a short, friendly summary for the user explaining what was built
 and how to run it.
 """
-    return run_qwen(prompt)
+    return await run_qwen(prompt)
