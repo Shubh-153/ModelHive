@@ -12,17 +12,25 @@ def run_copilot(prompt: str) -> str:
         return result.stderr
     return result.stdout
 
-ddef review_code(task_spec: str, backend_code: str, frontend_code: str) -> dict:
-    prompt = f"""Review the Flask backend in app.py and React frontend in App.jsx in the current directory.
+def review_code(task_spec: str, backend_code: str, frontend_code: str) -> dict:
+    prompt = f"""Review the generated Flask backend and React frontend code.
 
-They should match this spec:
+TASK SPEC:
 {task_spec}
 
-Check:
+GENERATED BACKEND CODE:
+{backend_code}
+
+GENERATED FRONTEND CODE:
+{frontend_code}
+
+CHECK:
 1. All required routes exist and return JSON
 2. CORS is enabled
-3. Frontend fetch calls match backend routes
-4. Task model has id, title, completed, createdAt, updatedAt fields
+3. Frontend fetch calls match backend route paths and methods
+4. Backend returns all required fields (id, title, description, completed, createdAt, updatedAt)
+5. Frontend state keys match backend response keys (e.g., 'completed' not 'isDone')
+6. Error handling is present in both backend and frontend
 
 Reply ONLY:
 STATUS: PASS
@@ -31,7 +39,7 @@ FEEDBACK: Looks good.
 OR:
 
 STATUS: FAIL
-FEEDBACK: (exactly what to fix)"""
+FEEDBACK: (exactly what to fix, one issue per line)"""
 
     response = run_copilot(prompt)
     print(f"[Copilot raw response]: {response}")
