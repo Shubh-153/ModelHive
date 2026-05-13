@@ -72,7 +72,7 @@ YOU MUST ADDRESS THE ABOVE FEEDBACK AS YOUR HIGHEST PRIORITY.
 
     prompt = f"""{feedback_section}
 
-You are a frontend React developer. Only write React code (single-file).
+You are a frontend React developer.
 
 TASK SPEC TO IMPLEMENT:
 {task_spec}
@@ -80,36 +80,39 @@ TASK SPEC TO IMPLEMENT:
 BACKEND ROUTES / SUMMARY:
 {backend_summary}
 
+YOUR RESPONSE MUST FOLLOW THIS EXACT STRUCTURE:
+1. <plan> 
+   - A brief 2-3 bullet point plan on how you will address the task spec and fix any FAIL points from the checklist.
+</plan>
+
+2. <code> 
+   The complete single-file React code. 
+</code>
+
 MANDATORY REQUIREMENTS:
 - Use fetch() to call backend at http://localhost:5000
 - Match the exact route paths, HTTP methods, and field names (id, title, etc.) defined in the TASK SPEC and BACKEND SUMMARY.
 - Create all components requested in the TASK SPEC (e.g. TaskList, TaskItem, etc.)
 - Surface API errors to the user.
 
-EXAMPLE PATTERN (follow this style, but use components and routes from the SPEC/FEEDBACK):
-
-import React, {{ useState, useEffect }} from 'react';
-
-const API_URL = 'http://localhost:5000';
-
-function ExampleComponent() {{
-  // Implementation...
-}}
-
-function App() {{
-  // Main state and layout...
-  return (
-    <div>
-       <ExampleComponent />
-    </div>
-  );
-}}
-
-export default App;
-
-Return ONLY the complete single-file React code. No explanations.
-"""
-    result = await run_gemini(prompt)
+Return ONLY the structured plan and code tags. No other text."""
+    
+    try:
+        raw_result = await run_gemini(prompt)
+        
+        # Extract code within <code> tags
+        import re
+        code_match = re.search(r'<code>(.*?)</code>', raw_result, re.DOTALL)
+        if code_match:
+            result = code_match.group(1).strip()
+            # Print the plan for the user to see progress
+            plan_match = re.search(r'<plan>(.*?)</plan>', raw_result, re.DOTALL)
+            if plan_match:
+                print(f"\n[Gemini Plan]:\n{plan_match.group(1).strip()}")
+        else:
+            result = raw_result # Fallback
+    except Exception as e:
+        result = str(e)
 
     # If result doesn't look like React code, return a minimal fallback app so orchestrator can continue.
     if not any(token in result for token in ("import React", "export default App", "useState")):

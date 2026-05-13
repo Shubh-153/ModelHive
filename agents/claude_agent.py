@@ -35,13 +35,21 @@ async def build_backend(task_spec: str, feedback: str = "") -> str:
 YOU MUST ADDRESS THE ABOVE FEEDBACK AS YOUR HIGHEST PRIORITY.
 """ if feedback else "No feedback yet. This is the first iteration."
 
-    # Build prompt as a plain string and concatenate task-specific sections
-    prompt_template = f"""{feedback_section}
+    prompt = f"""{feedback_section}
 
-You are a backend developer. Only write Python Flask code.
+You are a backend developer. 
 
 TASK SPEC TO IMPLEMENT:
 {task_spec}
+
+YOUR RESPONSE MUST FOLLOW THIS EXACT STRUCTURE:
+1. <plan> 
+   - A brief 2-3 bullet point plan on how you will address the task spec and fix any FAIL points from the checklist.
+</plan>
+
+2. <code> 
+   The complete Python Flask code. 
+</code>
 
 MANDATORY REQUIREMENTS:
 - Use flask_cors: from flask_cors import CORS; CORS(app)
@@ -50,33 +58,22 @@ MANDATORY REQUIREMENTS:
 - Match the exact route paths, HTTP methods, and ID types (int vs string/UUID) specified in the TASK SPEC and FEEDBACK above.
 - Use the field names defined in the TASK SPEC (e.g., id, title, completed, etc.)
 
-EXAMPLE PATTERN (follow this style, but use routes and field names from the SPEC/FEEDBACK):
+Return ONLY the structured plan and code tags. No other text."""
 
-from flask import Flask, request, jsonify
-from flask_cors import CORS
-from datetime import datetime
-import uuid # Use if spec requires UUIDs
-
-app = Flask(__name__)
-CORS(app)
-
-tasks = []
-
-@app.route('/api/example', methods=['GET']) # Replace with actual routes from spec
-def example_route():
-    return jsonify(tasks)
-
-# Ensure every route mentioned in the spec is implemented.
-# Ensure error handling (404 for missing resources) is implemented.
-
-Return ONLY the complete Flask code. No explanations.
-"""
-
-    prompt = prompt_template
-
-    # Try to run Claude; if output doesn't contain Flask code, fall back to a minimal Flask stub.
     try:
-        result = await run_claude(prompt)
+        raw_result = await run_claude(prompt)
+        
+        # Extract code within <code> tags
+        import re
+        code_match = re.search(r'<code>(.*?)</code>', raw_result, re.DOTALL)
+        if code_match:
+            result = code_match.group(1).strip()
+            # Print the plan for the user to see progress
+            plan_match = re.search(r'<plan>(.*?)</plan>', raw_result, re.DOTALL)
+            if plan_match:
+                print(f"\n[Claude Plan]:\n{plan_match.group(1).strip()}")
+        else:
+            result = raw_result # Fallback
     except Exception as e:
         result = str(e)
 
